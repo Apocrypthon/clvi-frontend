@@ -24,14 +24,19 @@ protocol above.
 
 ### A1 — Branch (2026-09-03, M0)
 
-The canonical integration branch is `loop`. Some sessions are handed a
-**designated branch** by their harness and may not push anywhere else. When that
-happens:
+The protocol above names `loop` as the integration branch. **Check that it
+exists before you rely on it** — at M0 it did not, and a doc that routes work to
+a branch nobody has created is worse than no doc.
+
+Some sessions are also handed a **designated branch** by their harness and may
+not push anywhere else. When either applies:
 
 1. Do the work on the designated branch.
 2. Say so plainly in your CHANGELOG entry and at the top of STATE.md, naming the
-   branch, so the next session and the human promoting the deploy can find it.
-3. A human (or the next unconstrained session) merges it into `loop`.
+   branch and what actually exists on origin, so the next session and whoever
+   owns the deploy can find the work.
+3. Leave the integration decision to a human. Do not create `loop`, retarget an
+   open PR, or merge to a different base to make the protocol true.
 
 Never push to `main`. Never silently retarget the deploy branch.
 

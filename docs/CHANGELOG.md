@@ -55,5 +55,10 @@ by reintroducing the wordmark bug — it failed 4/4 and exited 1 — then revert
 and rebuilt green. Screenshot reviewed at 390 × 844.
 
 **Note.** Pushed to `claude/strata-frontend-bootstrap-97ql5i`, not `loop` — this
-session's harness pinned the branch (`docs/LOOP.md` § A1). Needs merging into
-`loop` for the Netlify branch-deploy.
+session's harness pinned the branch (`docs/LOOP.md` § A1). Opening PR #1 exposed
+a second thing: **`loop` does not exist on origin at all** (only `main` and this
+branch), so the protocol's "push `origin loop`, Netlify branch-deploys it, a
+human promotes to `main`" describes a setup nobody has built yet. PR #1 targets
+`main`. Left for a human to decide — creating `loop` or retargeting the PR is a
+deploy decision, not a code one. STATE.md and LOOP.md § A1 now say what actually
+exists rather than what the protocol assumes.

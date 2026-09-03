@@ -3,10 +3,15 @@
 **Milestone reached: M0 (bootstrap).** The repo is green and deployable.
 Next increment: **M1 — Title screen.**
 
-> **Branch note.** Per `docs/LOOP.md` § A1, this session was constrained by its
-> harness to the branch `claude/strata-frontend-bootstrap-97ql5i` and could not
-> push to `loop`. The M0 bootstrap lives there and needs merging into `loop`
-> before Netlify branch-deploys it. Nothing else is blocked by this.
+> **Branch note.** The protocol in `SEED.md` assumes a `loop` branch that Netlify
+> branch-deploys and a human promotes to `main`. **As of this commit that branch
+> does not exist on origin** — the only branches are `main` and the harness-pinned
+> `claude/strata-frontend-bootstrap-97ql5i`, where M0 lives. PR #1 targets `main`
+> directly. Someone with the Netlify account has to decide whether to create
+> `loop` and point the branch-deploy at it, or to run this repo off `main`; until
+> then "live on the `loop` deploy" in the definition of done is unreachable as
+> written. Nothing about M1–M6 is blocked by this — only the deploy target is.
+> See `docs/LOOP.md` § A1.
 
 ## Blockers
 
