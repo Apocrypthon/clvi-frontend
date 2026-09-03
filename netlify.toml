@@ -1,0 +1,28 @@
+# Netlify branch-deploys `loop`; a human promotes to `main`. See docs/LOOP.md.
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+# The shell is a single-page app: hash routing (M2) never hits the server, but
+# a deep link or a refresh on an unknown path still must return index.html.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+    [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# config.json carries the public Supabase anon key (M3). It is deploy-provided
+# and must never be cached across deploys.
+[[headers]]
+  for = "/config.json"
+    [headers.values]
+    Cache-Control = "no-store"
