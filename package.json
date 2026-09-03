@@ -1,0 +1,17 @@
+{
+  "name": "clvi-frontend",
+  "private": true,
+  "version": "0.0.0",
+  "description": "STRATA game shell — title, wallet login, character creation.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "smoke": "node scripts/smoke.mjs"
+  },
+  "devDependencies": {
+    "typescript": "~6.0.2",
+    "vite": "^8.2.2"
+  }
+}
