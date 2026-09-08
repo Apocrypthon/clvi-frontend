@@ -30,7 +30,8 @@ An **iPhone on Safari**, held in one hand. Everything follows from that:
     vite.config.ts      injects __BUILD_TIME__ (declared in src/env.d.ts)
     netlify.toml        build/publish, SPA fallback, headers
     public/             copied verbatim to dist/ (favicon, later mock/audit.json)
-    src/main.ts         entry; M0 boot page
+    src/main.ts         entry; composes the title screen
+    src/scene.ts        the parallax vista (canvas, no animation loop)
     src/style.css       design tokens + base styles
     scripts/smoke.mjs   headless iPhone smoke check; no project deps
     docs/               the memory: VISION, ARCHITECTURE, STATE, CHANGELOG, LOOP
@@ -41,6 +42,28 @@ The dusk ramp lives in `src/style.css` as custom properties
 (`--dusk-0` horizon → `--dusk-4` zenith, plus `--neon`, `--sand`). Every screen
 pulls from these; the M1 parallax layers are the same ramp sampled at different
 heights. Do not hard-code colours in components.
+
+## Animation: no loop
+
+The parallax pan has no `requestAnimationFrame` loop. Each layer is painted once
+into a canvas holding two copies of a seamlessly tileable strip; the pan is a CSS
+`transform` animation from `0` to `-50%`, which the compositor runs off the main
+thread. Consequences worth preserving:
+
+- A busy main thread cannot stutter the pan, and idle CPU is genuinely idle.
+- Repainting happens only when the stage *width* changes. Height changes are
+  ignored on purpose — iOS Safari fires `resize` constantly as its toolbars
+  collapse, and redrawing on that would churn for nothing.
+- `devicePixelRatio` is capped at 2 (`DPR_CAP`). iPhones report 3; on wide
+  silhouettes the third pixel is invisible and costs 2.25x the texture memory.
+
+Two rules keep the loop seamless. Any element that crosses a tile edge must be
+painted again a tile-width over — **in both directions**, since blooms anchored
+at `centre - radius` routinely start left of zero. And every random draw must
+happen *before* that wrapping, or the wrapped copy differs from the original.
+The tile is painted once offscreen and blitted twice, so the two copies are
+bit-identical; painting the halves separately makes them differ by a dithering
+step, because gradient dithering depends on absolute x.
 
 ## Persistence
 

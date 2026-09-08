@@ -1,17 +1,17 @@
 # STATE — clvi-frontend
 
-**Milestone reached: M0 (bootstrap).** The repo is green and deployable.
-Next increment: **M1 — Title screen.**
+**Milestone reached: M1 (title screen).** The repo is green and deployable.
+Next increment: **M2 — State machine.**
 
 > **Branch note.** The protocol in `SEED.md` assumes a `loop` branch that Netlify
-> branch-deploys and a human promotes to `main`. **As of this commit that branch
-> does not exist on origin** — the only branches are `main` and the harness-pinned
-> `claude/strata-frontend-bootstrap-97ql5i`, where M0 lives. PR #1 targets `main`
-> directly. Someone with the Netlify account has to decide whether to create
-> `loop` and point the branch-deploy at it, or to run this repo off `main`; until
-> then "live on the `loop` deploy" in the definition of done is unreachable as
-> written. Nothing about M1–M6 is blocked by this — only the deploy target is.
-> See `docs/LOOP.md` § A1.
+> branch-deploys and a human promotes to `main`. **That branch does not exist on
+> origin.** M0 shipped as PR #1 straight into `main`, and M1 is on
+> `claude/strata-frontend-bootstrap-97ql5i` (restarted from `main`, since a merged
+> PR cannot carry follow-up commits). Someone with the Netlify account has to
+> decide whether to create `loop` and point a branch-deploy at it, or to run this
+> repo off `main` and amend `SEED.md`; until then "live on the `loop` deploy" in
+> the definition of done is unreachable as written. **No milestone is blocked by
+> this — only the deploy target is.** See `docs/LOOP.md` § A1.
 
 ## Blockers
 
@@ -21,11 +21,20 @@ None.
 
     index.html          #app mount, iPhone meta (viewport-fit, safe areas, theme)
     vite.config.ts      injects __BUILD_TIME__ at build time
-    src/main.ts         M0 boot page — replace its body for M1
+    src/main.ts         composes the title screen: wordmark, tagline, CTA, stamp
+    src/scene.ts        the parallax vista — mountScene(stage), no rAF loop
     src/env.d.ts        declares __BUILD_TIME__
     src/style.css       dusk tokens (--dusk-0..4, --neon, --sand, --tap) + base
     public/favicon.svg  strata bands mark
     scripts/smoke.mjs   automated half of § Verify (`npm run smoke`)
+
+The title screen is two stacked pieces: `.stage` (fixed, clipped, holds the sky
+plus three `canvas.layer`s) and `.screen` (the content above it). `mountScene`
+returns a handle with `destroy()` so M4's pan-down can tear the vista down.
+
+**The CTA's seam:** tapping "Begin" dispatches `strata:begin` on `document`. It
+deliberately routes nowhere — routing is M2's increment. Bind to that event
+rather than rewiring the button.
     netlify.toml        build `npm run build`, publish `dist`, SPA fallback
     docs/               VISION · ARCHITECTURE · STATE · CHANGELOG · LOOP
     SEED.md             the originating prompt, verbatim — do not edit
@@ -52,11 +61,20 @@ Smoke checks for **every** increment. All must pass before you ship.
    iPhone profile at 390 × 844 and 320 × 568, each with and without
    `prefers-reduced-motion: reduce`, asserting: HTTP 200, no console
    errors/warnings, no page error, no failed request, a well-formed build stamp,
-   nothing bleeding past the viewport, and no touch target under 44 px.
+   the wordmark and a CTA present, nothing bleeding past the viewport (layers
+   marked `data-overflow="intentional"` are exempt — they are two tiles wide by
+   design), no touch target under 44 px, and for each of the three parallax
+   layers that it drew something and tiles seamlessly. Then one `motion` pass
+   checks the pan actually moves, that nearer layers outrun farther ones, that a
+   hidden page freezes it, and that the CTA dispatches `strata:begin`.
    `SMOKE_SHOTS=/some/dir npm run smoke` also writes screenshots.
    It **skips** (exit 0) if Playwright is not on the machine — then do 3–6 by
    hand. Extend it whenever you add a screen; a check that cannot fail is worth
    nothing, so confirm a new assertion fails before you trust it.
+
+   Comparing canvas pixels, compare them **premultiplied by alpha**. Raw RGB in a
+   near-transparent pixel is dithering noise: at alpha 5, RGB 51 and RGB 0 are
+   both "nothing", and comparing them raw fails loudly for no visible reason.
 
 Still by eye, because the script cannot judge them:
 
@@ -64,6 +82,10 @@ Still by eye, because the script cannot judge them:
 4. Nothing sits under the notch or the home indicator on a real device.
 5. It looks right — the dusk palette reads warm at the horizon, cool above.
 6. Motion is smooth in one hand and the phone stays cool.
+7. No seam slides past. The tile junction is the only place a wrapping mistake
+   shows; force it into view with
+   `.layer { animation: none !important; transform: translate3d(-25%,0,0) !important }`
+   and look for a hard vertical cut.
 
 From M2 onward also check: back gesture / browser Back returns to the previous
 screen without a blank frame, and a reload restores the same screen from the
@@ -73,16 +95,15 @@ hash.
 
 Ordered. Take the first unfinished item, whole (`docs/LOOP.md` § A2).
 
-- [ ] **M1 — Title screen.** Layered Paradise-at-dusk skyline with a slow
-      continuous lateral pan: sky gradient, distant towers, neon haze, foreground
-      desert scrub. "STRATA" wordmark, single CTA. Canvas or SVG — see
-      ARCHITECTURE § North star for why not to build an abstraction. Must run
-      cool on a phone: animate `transform`/`opacity` only, cap the work per
-      frame, pause when the tab is hidden (`visibilitychange`), and cut the pan
-      under `prefers-reduced-motion`.
+- [x] **M1 — Title screen.** Done. Sky gradient, distant towers, neon haze and
+      foreground desert scrub, panning at three rates. No animation loop — see
+      ARCHITECTURE § Animation before changing anything in `src/scene.ts`.
 - [ ] **M2 — State machine.** `BOOT → TITLE → {NEW, RETURNING, SETTINGS}`.
       Hash-based routing, back gestures safe, state persisted to `localStorage`
       under `strata.*`. Parse saves defensively (ARCHITECTURE § Persistence).
+      Bind to the `strata:begin` event the CTA already dispatches. The vista
+      should survive the transition rather than remount — `mountScene` returns a
+      `destroy()` handle, but TITLE → NEW wants the same sky, not a new one.
 - [ ] **M3 — Wallet login.** "Wallet" = custodial Guardian account. Email OTP via
       Supabase JS; public anon key read at runtime from `/config.json` (never
       committed). On success derive `displayId` = `GRD-` + first 6 of
