@@ -1,13 +1,13 @@
 # STATE — clvi-frontend
 
-**Milestone reached: M1 (title screen).** The repo is green and deployable.
-Next increment: **M2 — State machine.**
+**Milestone reached: M2 (state machine).** The repo is green and deployable.
+Next increment: **M3 — Wallet login.**
 
 > **Branch note.** The protocol in `SEED.md` assumes a `loop` branch that Netlify
 > branch-deploys and a human promotes to `main`. **That branch does not exist on
-> origin.** M0 shipped as PR #1 straight into `main`, and M1 is on
-> `claude/strata-frontend-bootstrap-97ql5i` (restarted from `main`, since a merged
-> PR cannot carry follow-up commits). Someone with the Netlify account has to
+> origin.** M0 shipped as PR #1 straight into `main`; M1 and M2 are on
+> `claude/strata-frontend-bootstrap-97ql5i` and are **not yet merged**. Someone
+> with the Netlify account has to
 > decide whether to create `loop` and point a branch-deploy at it, or to run this
 > repo off `main` and amend `SEED.md`; until then "live on the `loop` deploy" in
 > the definition of done is unreachable as written. **No milestone is blocked by
@@ -21,26 +21,50 @@ None.
 
     index.html          #app mount, iPhone meta (viewport-fit, safe areas, theme)
     vite.config.ts      injects __BUILD_TIME__ at build time
-    src/main.ts         composes the title screen: wordmark, tagline, CTA, stamp
+    src/main.ts         composition root — mounts the vista, swaps screens
+    src/router.ts       state machine + hash routing; createRouter({ resolve })
+    src/store.ts        validated localStorage under `strata.*`; readSave()
+    src/screens.ts      renderScreen(name, ctx) — one function per screen
     src/scene.ts        the parallax vista — mountScene(stage), no rAF loop
     src/env.d.ts        declares __BUILD_TIME__
     src/style.css       dusk tokens (--dusk-0..4, --neon, --sand, --tap) + base
     public/favicon.svg  strata bands mark
     scripts/smoke.mjs   automated half of § Verify (`npm run smoke`)
-
-The title screen is two stacked pieces: `.stage` (fixed, clipped, holds the sky
-plus three `canvas.layer`s) and `.screen` (the content above it). `mountScene`
-returns a handle with `destroy()` so M4's pan-down can tear the vista down.
-
-**The CTA's seam:** tapping "Begin" dispatches `strata:begin` on `document`. It
-deliberately routes nowhere — routing is M2's increment. Bind to that event
-rather than rewiring the button.
     netlify.toml        build `npm run build`, publish `dist`, SPA fallback
     docs/               VISION · ARCHITECTURE · STATE · CHANGELOG · LOOP
     SEED.md             the originating prompt, verbatim — do not edit
 
 Runtime dependencies: **0**. Dev: `typescript`, `vite`. Read
 `docs/ARCHITECTURE.md` before adding any.
+
+## How a screen works
+
+Three stacked pieces, and only the middle one changes:
+
+    .stage    fixed, clipped, holds the sky + three canvas.layer — mounted ONCE
+    .screen   bare host; main.ts swaps one .view into it per route
+    .view     the current screen's root, rendered by src/screens.ts
+
+`main.ts` mounts the vista once and never remounts it — a remount restarts the
+pan and repaints three canvases. `mountScene` still returns `destroy()` for M4's
+pan-down, but a route change must not call it.
+
+Routes: `#/` title · `#/new` · `#/returning` · `#/settings`. Unknown hashes and
+guarded redirects are rewritten with REPLACE so Back cannot return into them.
+Read `docs/ARCHITECTURE.md` § Routing before touching `src/router.ts` — every
+rule in there exists because getting it wrong breaks the back gesture silently.
+
+**The CTA's seam:** tapping the title CTA dispatches `strata:begin` on
+`document`; `main.ts` listens and routes to NEW or RETURNING depending on
+`readSave()`. Keep that split — the button should stay ignorant of the machine.
+
+**The save is the branch.** `readSave()` returning non-null is what makes a
+player "returning": the CTA reads *Continue*, and `#/returning` stops
+redirecting to `#/new`. Nothing in the app writes a save yet — **M4 is the first
+writer**. Until then, exercise the branch with:
+
+    localStorage.setItem('strata.save', JSON.stringify(
+      { name: 'Vela', createdAt: '2026-09-01T00:00:00.000Z' }))
 
 ## Run it
 
@@ -67,7 +91,13 @@ Smoke checks for **every** increment. All must pass before you ship.
    layers that it drew something and tiles seamlessly. Then one `motion` pass
    checks the pan actually moves, that nearer layers outrun farther ones, that a
    hidden page freezes it, and that the CTA dispatches `strata:begin`.
-   `SMOKE_SHOTS=/some/dir npm run smoke` also writes screenshots.
+   Then a `routing` pass drives the state machine: BOOT normalises to `#/`, the
+   CTA reaches NEW, Back returns to TITLE, a reload restores the screen from the
+   hash, an unknown hash and a guarded `#/returning` are both rewritten in place,
+   in-app Back from a deep link lands on TITLE, a save flips the CTA to
+   *Continue*, and six malformed saves each read as "no save". It also asserts
+   the vista is never remounted and that the screen host never goes empty mid-swap
+   (a blank frame). `SMOKE_SHOTS=/some/dir npm run smoke` also writes screenshots.
    It **skips** (exit 0) if Playwright is not on the machine — then do 3–6 by
    hand. Extend it whenever you add a screen; a check that cannot fail is worth
    nothing, so confirm a new assertion fails before you trust it.
@@ -87,9 +117,9 @@ Still by eye, because the script cannot judge them:
    `.layer { animation: none !important; transform: translate3d(-25%,0,0) !important }`
    and look for a hard vertical cut.
 
-From M2 onward also check: back gesture / browser Back returns to the previous
-screen without a blank frame, and a reload restores the same screen from the
-hash.
+8. On a real device, the swipe-back gesture (not just the toolbar Back) returns
+   to the previous screen without a flash. The smoke check proves the DOM never
+   empties; only a device shows you the paint.
 
 ## Next
 
@@ -98,17 +128,17 @@ Ordered. Take the first unfinished item, whole (`docs/LOOP.md` § A2).
 - [x] **M1 — Title screen.** Done. Sky gradient, distant towers, neon haze and
       foreground desert scrub, panning at three rates. No animation loop — see
       ARCHITECTURE § Animation before changing anything in `src/scene.ts`.
-- [ ] **M2 — State machine.** `BOOT → TITLE → {NEW, RETURNING, SETTINGS}`.
-      Hash-based routing, back gestures safe, state persisted to `localStorage`
-      under `strata.*`. Parse saves defensively (ARCHITECTURE § Persistence).
-      Bind to the `strata:begin` event the CTA already dispatches. The vista
-      should survive the transition rather than remount — `mountScene` returns a
-      `destroy()` handle, but TITLE → NEW wants the same sky, not a new one.
+- [x] **M2 — State machine.** Done. Hash routing, guarded transitions, back
+      gesture safe, `strata.*` storage validated on read. NEW / RETURNING /
+      SETTINGS are honest scaffolds that name the milestone filling them in.
 - [ ] **M3 — Wallet login.** "Wallet" = custodial Guardian account. Email OTP via
       Supabase JS; public anon key read at runtime from `/config.json` (never
       committed). On success derive `displayId` = `GRD-` + first 6 of
-      `sha256(userId)`. Offline/dev fallback: local guest wallet, clearly
-      labelled as such in the UI.
+      `sha256(userId)` via `crypto.subtle.digest`. Offline/dev fallback: local
+      guest wallet, clearly labelled as such in the UI. It lands in the NEW
+      screen (`renderNew` in `src/screens.ts`), and the Supabase client is the
+      first runtime dependency this repo has taken — ARCHITECTURE says argue for
+      it here before adding it.
 - [ ] **M4 — Character creation, pan-down.** Camera pans DOWN from the title
       vista to street level where the silhouette stands. Name field + Holi
       palette pick (8 pigment swatches) + 3 silhouettes. Save to `localStorage`

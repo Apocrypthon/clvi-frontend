@@ -1,10 +1,13 @@
 import './style.css';
 import { mountScene } from './scene.ts';
+import { createRouter, type Screen } from './router.ts';
+import { readSave } from './store.ts';
+import { renderScreen, type ScreenContext } from './screens.ts';
 
 /**
- * M1 — the title screen. The vista lives in .stage (see src/scene.ts); this
- * module owns the content on top of it: wordmark, tagline, the single CTA, and
- * the build stamp that proves which deploy you are looking at.
+ * Composition root. Mounts the vista once, then swaps screens above it as the
+ * router changes — the sky is the one thing that must NOT remount, or every
+ * transition would restart the pan and repaint three canvases.
  */
 
 const BUILD_TIME = __BUILD_TIME__;
@@ -28,38 +31,36 @@ stage.className = 'stage';
 // Decorative: the vista carries no information a screen reader needs.
 stage.setAttribute('aria-hidden', 'true');
 
-const screen = document.createElement('main');
-screen.className = 'screen';
+const host = document.createElement('main');
+host.className = 'screen';
 
-const wordmark = document.createElement('h1');
-wordmark.className = 'wordmark';
-wordmark.textContent = 'STRATA';
+app.append(stage, host);
+mountScene(stage);
 
-const tagline = document.createElement('p');
-tagline.className = 'tagline';
-tagline.textContent = 'Restore the Paradise service area, one stratum at a time.';
+const buildTime = formatStamp(BUILD_TIME);
 
-const cta = document.createElement('button');
-cta.className = 'cta';
-cta.type = 'button';
-cta.textContent = 'Begin';
-
-/**
- * The seam M2 plugs into. M1 owns the button; routing to NEW / RETURNING is
- * M2's increment, so this announces intent rather than faking a destination.
- */
-cta.addEventListener('click', () => {
-  document.dispatchEvent(new CustomEvent('strata:begin'));
+const router = createRouter({
+  /**
+   * The only guard M2 needs: RETURNING is meaningless without a save, so a deep
+   * link or a stale bookmark lands on NEW instead. Idempotent, as createRouter
+   * requires — NEW never redirects.
+   */
+  resolve: (screen: Screen) => (screen === 'returning' && !readSave() ? 'new' : screen),
 });
 
-const stamp = document.createElement('p');
-stamp.className = 'stamp';
-stamp.append('clvi-frontend · ');
-const stampTime = document.createElement('b');
-stampTime.textContent = formatStamp(BUILD_TIME);
-stamp.append(stampTime);
+function show(screen: Screen): void {
+  const ctx: ScreenContext = { router, save: readSave(), buildTime };
+  // Build first, then swap in one step: replaceChildren with a ready element
+  // never leaves the host empty, so Back cannot flash a blank frame.
+  host.replaceChildren(renderScreen(screen, ctx));
+  document.documentElement.dataset.screen = screen;
+}
 
-screen.append(wordmark, tagline, cta, stamp);
-app.append(stage, screen);
+router.subscribe(show);
+show(router.current());
 
-mountScene(stage);
+// The CTA's seam, established in M1. The button announces intent; routing is
+// decided here, where the save is already in hand.
+document.addEventListener('strata:begin', () => {
+  router.go(readSave() ? 'returning' : 'new');
+});

@@ -122,9 +122,15 @@ body {
 
 /* ---- content over the vista --------------------------------------------- */
 
+/* The host is a bare positioning context; each screen renders its own .view
+   into it, so swapping screens never disturbs the vista underneath. */
 .screen {
   position: relative;
   z-index: 1;
+}
+
+.view {
+  position: relative;
   min-height: 100dvh;
   padding: calc(var(--safe-top) + 24px) calc(var(--safe-right) + 20px)
     calc(var(--safe-bottom) + 20px) calc(var(--safe-left) + 20px);
@@ -133,6 +139,110 @@ body {
   align-items: center;
   gap: 18px;
   text-align: center;
+  animation: view-in 200ms ease both;
+}
+
+@keyframes view-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---- sub-screen chrome --------------------------------------------------- */
+
+.topbar {
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.back {
+  min-width: var(--tap);
+  min-height: var(--tap);
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--sand) 22%, transparent);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--dusk-4) 55%, transparent);
+  color: var(--text);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 120ms ease;
+}
+
+.back:active {
+  transform: scale(0.94);
+}
+
+.back:focus-visible,
+.icon-btn:focus-visible {
+  outline: 2px solid var(--neon);
+  outline-offset: 3px;
+}
+
+.view-title {
+  margin: 4vh 0 0;
+  font-size: clamp(1.5rem, 7vw, 2.25rem);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--text);
+  text-shadow: 0 1px 14px rgba(6, 5, 14, 0.85);
+}
+
+/* Scaffolds for M3-M6. Reads as a note, not as a broken control. */
+.placeholder {
+  max-width: 34ch;
+  padding: 16px 18px;
+  border: 1px dashed color-mix(in srgb, var(--neon) 28%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--dusk-4) 45%, transparent);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  color: color-mix(in srgb, var(--sand) 68%, transparent);
+  font-size: 0.875rem;
+  text-wrap: pretty;
+}
+
+.placeholder p {
+  margin: 0 0 6px;
+}
+
+.placeholder p:last-child {
+  margin-bottom: 0;
+}
+
+/* ---- title-screen navigation --------------------------------------------- */
+
+.title-nav {
+  position: absolute;
+  top: calc(var(--safe-top) + 14px);
+  right: calc(var(--safe-right) + 14px);
+}
+
+.icon-btn {
+  min-height: var(--tap);
+  padding: 0 16px;
+  border: 1px solid color-mix(in srgb, var(--sand) 20%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--dusk-4) 50%, transparent);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  color: color-mix(in srgb, var(--sand) 75%, transparent);
+  font: inherit;
+  font-size: 0.8125rem;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* The CTA sits below the horizon; auto margin pins it above the stamp. */
@@ -172,7 +282,7 @@ body {
 .wordmark {
   /* Rides above the horizon, clear of the notch. One rule, so a stray
      `margin: 0` further down cannot silently reclaim it. */
-  margin: 11vh 0 0;
+  margin: 13vh 0 0;
   /* Sized so glyph advances *plus* 0.22em of tracking per letter still clear the
      #app padding at 320px. Raising this reintroduces horizontal overflow —
      re-run the smoke check (docs/STATE.md § Verify item 4) if you touch it. */

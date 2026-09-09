@@ -114,3 +114,59 @@ confirmed non-vacuous by breaking it first — removing the pan, inverting the
 parallax order, and blanking a layer each failed as expected before being
 reverted. Screenshots reviewed at 390 × 844, at the tile junction (forced to
 `translate3d(-25%)`, no visible cut), and in landscape.
+
+## 2026-09-09 — M2 state machine
+
+**What.** `BOOT → TITLE → { NEW, RETURNING, SETTINGS }` over hash routing, with
+the back gesture safe, and `strata.*` localStorage validated on every read. The
+title CTA now branches: *Begin* → NEW with no save, *Continue* → RETURNING with
+one. NEW / RETURNING / SETTINGS are honest scaffolds naming the milestone that
+fills them in, not fake controls.
+
+**Why.** M2, the first unmet milestone. It is the spine every later screen hangs
+off: M3 lands in NEW, M5 in RETURNING, M6 in SETTINGS.
+
+**Files.** `src/router.ts`, `src/store.ts`, `src/screens.ts` (new);
+`src/main.ts` reduced to a composition root; `src/style.css`,
+`scripts/smoke.mjs`, `docs/ARCHITECTURE.md`, `docs/STATE.md`.
+
+**Decisions worth keeping.**
+
+- Navigation goes through `pushState`/`replaceState`, never `location.hash =`.
+  That is the only way to control whether a transition leaves a history entry.
+  Normalising an unknown or guarded route uses REPLACE — a push there means Back
+  bounces the player straight back into the route you just rejected.
+- Each history entry carries its depth in `history.state`, so the in-app Back
+  control can tell a real app entry from a deep link with nothing behind it and
+  land on TITLE instead of walking off the site.
+- Guards must be idempotent; a redirect re-runs `resolve`, and one that keeps
+  changing its mind would loop forever. Documented on `RouterOptions.resolve`.
+- The next view is built *before* the current one is removed, so the swap is a
+  single mutation. Emptying first leaves a frame with nothing on screen, which
+  the back gesture makes very visible.
+- The vista is mounted once and never remounted; screens swap above it. A
+  remount would restart the pan and repaint three canvases per transition.
+- `readSave()` validates field by field and treats a blocked localStorage
+  (Safari Private Browsing throws on access) as "no save" rather than crashing.
+  Only `name` and `createdAt` are required, so a save written by an older build
+  stays readable as M4 and M5 add fields.
+
+**Also.** Recorded the north-star gameplay loops in ARCHITECTURE — Modular
+Pedestrian (micro) and CLEAN ASCENT (macro) — and corrected the client target to
+Godot / Rust / WASM. Not to be built here; noted so the shell does not design
+against the wrong shape. Repaired the "Where things are" table in STATE.md,
+which M1 had split in half with prose, orphaning three entries. Restored the
+neon highlight on the build stamp's timestamp, lost when the title screen moved
+into `screens.ts`.
+
+**Verify.** `npm run build` — PASS. `npm run smoke` — PASS: 4/4 viewport
+configurations, plus `motion` and a new `routing` pass covering BOOT
+normalisation, the CTA branch both ways, Back to TITLE, reload-restores-screen,
+unknown-hash rewrite, the RETURNING guard, in-app Back from a deep link, and six
+malformed saves each reading as "no save". Two structural invariants are
+asserted directly: the vista is never remounted (canvas layers keep a tag across
+transitions) and the screen host never empties mid-swap (a MutationObserver
+flags any removal without a matching addition). Each new assertion confirmed
+non-vacuous by breaking it first — dropping the guard, emptying before
+appending, and remounting the scene each failed as expected, then reverted.
+Screens reviewed at 390 × 844.

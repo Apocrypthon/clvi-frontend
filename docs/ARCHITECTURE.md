@@ -30,7 +30,10 @@ An **iPhone on Safari**, held in one hand. Everything follows from that:
     vite.config.ts      injects __BUILD_TIME__ (declared in src/env.d.ts)
     netlify.toml        build/publish, SPA fallback, headers
     public/             copied verbatim to dist/ (favicon, later mock/audit.json)
-    src/main.ts         entry; composes the title screen
+    src/main.ts         composition root; mounts the vista, swaps screens
+    src/router.ts       the state machine + hash routing
+    src/store.ts        validated localStorage access under `strata.*`
+    src/screens.ts      one render function per screen
     src/scene.ts        the parallax vista (canvas, no animation loop)
     src/style.css       design tokens + base styles
     scripts/smoke.mjs   headless iPhone smoke check; no project deps
@@ -42,6 +45,28 @@ The dusk ramp lives in `src/style.css` as custom properties
 (`--dusk-0` horizon → `--dusk-4` zenith, plus `--neon`, `--sand`). Every screen
 pulls from these; the M1 parallax layers are the same ramp sampled at different
 heights. Do not hard-code colours in components.
+
+## Routing and the back gesture
+
+`BOOT → TITLE → { NEW, RETURNING, SETTINGS }`, hash-based so every route works
+on a static host. `src/router.ts` navigates with `pushState`/`replaceState`
+rather than assigning `location.hash`, because that is the only way to control
+whether a transition leaves a history entry — which is what makes Back behave.
+
+- **Normalising a route uses REPLACE.** An unknown hash, or one a guard
+  redirects, must not stay in history; a push there means Back bounces the
+  player straight into it again.
+- **Each entry carries its depth** in `history.state`. An in-app Back control
+  needs to know whether there is an app entry behind it or whether Back would
+  walk off the site entirely — a deep link has nothing behind it.
+- **Guards must be idempotent.** A redirect re-runs `resolve`, so a guard that
+  keeps changing its mind loops forever.
+- **Build the next view before removing the current one.** `replaceChildren`
+  with a ready element swaps in a single mutation; emptying first and appending
+  after leaves a frame with nothing on screen, which the back gesture makes very
+  visible.
+- **The vista is mounted once and never remounted.** Screens swap above it. A
+  remount would restart the pan and repaint three canvases on every transition.
 
 ## Animation: no loop
 
@@ -94,10 +119,21 @@ credentials belong to the backend, never to a static bundle.
 
 ## North star — not to be built here
 
-The shipping client is planned as **Godot / WebGL2**, against a **Rust +
+The shipping client is planned as **Godot / Rust / WASM**, against a **Rust +
 PostgreSQL** authoritative backend with **Nakama** for realtime, per the CLVI
 overview. This repo is the shell that proves the feel and the identity flow
-first. Consequences for decisions made here:
+first.
+
+Two gameplay loops it will carry — recorded here so the shell does not design
+against the wrong shape, **not to be built in this repo**:
+
+- **Modular Pedestrian (micro-loop)** — moment-to-moment humour, physics
+  mishaps, puzzle-solving. The texture of a single outing on foot.
+- **CLEAN ASCENT (macro-loop)** — resource scavenging, extraction risk, and
+  seasonal vertical resets. The reason to come back, and the reason the map
+  moves upward through the strata over a season.
+
+Consequences for decisions made here:
 
 - Keep game logic thin and portable; the shell's job is presentation and
   identity, not simulation.
@@ -105,3 +141,6 @@ first. Consequences for decisions made here:
   Godot client can be dropped in behind the same shapes.
 - Do not invest in a JS rendering abstraction that Godot will throw away. Canvas
   or SVG drawn directly is correct for M1.
+- The shell owns identity and arrival, never the loops above. If a screen here
+  starts modelling scavenging, extraction risk or seasonal resets, it has
+  wandered out of this repo's slice.

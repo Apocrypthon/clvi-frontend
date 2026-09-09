@@ -295,6 +295,126 @@ for (const size of SIZES) {
   await ctx.close();
 }
 
+// M2's state machine. Routing, the back gesture, the save guard, and the rule
+// that the vista must survive a screen change rather than remount.
+{
+  const ctx = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    deviceScaleFactor: 2,
+    isMobile: true,
+    hasTouch: true,
+    userAgent: IPHONE_UA,
+  });
+  const page = await ctx.newPage();
+  const problems = [];
+  const check = (cond, msg) => { if (!cond) problems.push(msg); };
+
+  const state = () =>
+    page.evaluate(() => ({
+      hash: location.hash,
+      view: document.querySelector('.view')?.dataset.view ?? null,
+      views: document.querySelectorAll('.view').length,
+      cta: document.querySelector('.cta')?.textContent?.trim() ?? null,
+    }));
+
+  await page.goto(origin, { waitUntil: 'networkidle' });
+
+  // A swap that removes without adding in the same mutation is a blank frame.
+  await page.evaluate(() => {
+    window.__blankFrames = 0;
+    const host = document.querySelector('.screen');
+    new MutationObserver((records) => {
+      for (const r of records) {
+        if (r.removedNodes.length > 0 && r.addedNodes.length === 0) window.__blankFrames += 1;
+      }
+    }).observe(host, { childList: true });
+    // A remount of the vista would replace these elements and lose the tag.
+    for (const c of document.querySelectorAll('canvas.layer')) c.dataset.kept = 'yes';
+  });
+
+  let s = await state();
+  check(s.hash === '#/', `BOOT should normalise to "#/", got ${JSON.stringify(s.hash)}`);
+  check(s.view === 'title', `BOOT should land on title, got ${JSON.stringify(s.view)}`);
+  check(s.cta === 'Begin', `no save: CTA should read "Begin", got ${JSON.stringify(s.cta)}`);
+
+  // TITLE -> NEW via the CTA seam.
+  await page.click('.cta');
+  s = await state();
+  check(s.hash === '#/new', `CTA with no save should go to "#/new", got ${JSON.stringify(s.hash)}`);
+  check(s.view === 'new', `expected the new view, got ${JSON.stringify(s.view)}`);
+  check(s.views === 1, `expected exactly one .view mounted, got ${s.views}`);
+
+  // Back gesture returns to title.
+  await page.goBack();
+  s = await state();
+  check(s.view === 'title', `Back from NEW should return to title, got ${JSON.stringify(s.view)}`);
+  check(s.hash === '#/', `Back should restore "#/", got ${JSON.stringify(s.hash)}`);
+
+  // The vista must not have remounted across any of that.
+  const kept = await page.evaluate(() =>
+    [...document.querySelectorAll('canvas.layer')].every((c) => c.dataset.kept === 'yes'));
+  check(kept, 'the vista remounted on a screen change (canvas layers were replaced)');
+  const blanks = await page.evaluate(() => window.__blankFrames);
+  check(blanks === 0, `screen host went empty during a swap ${blanks} time(s) — blank frame`);
+
+  // TITLE -> SETTINGS, then a reload must restore it from the hash.
+  await page.click('.icon-btn');
+  s = await state();
+  check(s.view === 'settings', `settings button should open settings, got ${JSON.stringify(s.view)}`);
+  await page.reload({ waitUntil: 'networkidle' });
+  s = await state();
+  check(s.view === 'settings', `reload on "#/settings" should restore it, got ${JSON.stringify(s.view)}`);
+
+  // An unknown route is rewritten in place, so Back must not return into it.
+  await page.goto(`${origin}#/nope`, { waitUntil: 'networkidle' });
+  s = await state();
+  check(s.view === 'title', `unknown hash should resolve to title, got ${JSON.stringify(s.view)}`);
+  check(s.hash === '#/', `unknown hash should be rewritten to "#/", got ${JSON.stringify(s.hash)}`);
+
+  // RETURNING without a save is meaningless: the guard sends it to NEW.
+  await page.goto(`${origin}#/returning`, { waitUntil: 'networkidle' });
+  s = await state();
+  check(s.view === 'new', `"#/returning" with no save should redirect to new, got ${JSON.stringify(s.view)}`);
+  check(s.hash === '#/new', `guard should rewrite the hash too, got ${JSON.stringify(s.hash)}`);
+
+  // In-app Back from a deep link has nothing behind it; it must land on title
+  // rather than walk off the site.
+  const leftSite = await page.evaluate(async () => {
+    document.querySelector('.back')?.click();
+    await new Promise((r) => setTimeout(r, 50));
+    return document.querySelector('.view')?.dataset.view;
+  });
+  check(leftSite === 'title', `in-app Back from a deep link should reach title, got ${JSON.stringify(leftSite)}`);
+
+  // With a save, the title offers to continue and the guard stands down.
+  await page.evaluate(() => {
+    localStorage.setItem('strata.save', JSON.stringify({
+      name: 'Vela', createdAt: '2026-09-01T00:00:00.000Z', cellId: 'PARADISE-014',
+    }));
+  });
+  await page.goto(origin, { waitUntil: 'networkidle' });
+  s = await state();
+  check(s.cta === 'Continue', `with a save the CTA should read "Continue", got ${JSON.stringify(s.cta)}`);
+  await page.click('.cta');
+  s = await state();
+  check(s.view === 'returning', `CTA with a save should go to returning, got ${JSON.stringify(s.view)}`);
+
+  // A corrupt or half-written save must read as "no save", not throw.
+  for (const bad of ['not json at all', '[]', '{}', '{"name":""}', '{"name":"V"}', 'null']) {
+    await page.evaluate((v) => localStorage.setItem('strata.save', v), bad);
+    await page.goto(origin, { waitUntil: 'networkidle' });
+    const cta = await page.evaluate(() => document.querySelector('.cta')?.textContent?.trim());
+    check(cta === 'Begin', `corrupt save ${JSON.stringify(bad)} should read as no save, CTA was ${JSON.stringify(cta)}`);
+  }
+
+  console.log(problems.length ? 'FAIL routing' : 'ok   routing');
+  for (const p of problems) {
+    console.log(`       ${p}`);
+    failures.push(`routing: ${p}`);
+  }
+  await ctx.close();
+}
+
 await browser.close();
 server.close();
 
