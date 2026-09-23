@@ -34,6 +34,7 @@ An **iPhone on Safari**, held in one hand. Everything follows from that:
     src/router.ts       the state machine + hash routing
     src/store.ts        validated localStorage access under `strata.*`
     src/screens.ts      one render function per screen
+    src/connectors.ts   sign-in provider registry (marks, brand, status)
     src/scene.ts        the parallax vista (canvas, no animation loop)
     src/style.css       design tokens + base styles
     scripts/smoke.mjs   headless iPhone smoke check; no project deps
@@ -96,6 +97,36 @@ All local state is namespaced `strata.*` in `localStorage` (M2 onward). Treat it
 as untrusted input on read: a user can edit it, and a save written by an older
 build may lack fields. Parse defensively, never `JSON.parse` straight into a
 typed variable without validating.
+
+## Sign-in providers
+
+`src/connectors.ts` is the registry behind the NEW screen. Two rules are not
+negotiable:
+
+- **This app never collects a provider's password or seed phrase.** Real
+  sign-in either redirects to the provider (OAuth) or asks a wallet extension to
+  sign a challenge (EIP-1193 / EIP-4361). A form here that asked for a Coinbase
+  password would be a phishing page regardless of intent. `npm run smoke`
+  asserts there is no password input on the screen.
+- **Each button's `status` must stay true.** `planned` means a documented
+  integration exists and is unbuilt; `unavailable` means there is nothing to
+  build against. Tapping a button shows that provider's own note, so a player
+  is never left guessing whether they did something wrong.
+
+Provider reality as of M3 — **verify before committing engineering time**:
+
+| Provider | What exists |
+| --- | --- |
+| MetaMask | EIP-1193 in-page, then Sign-In With Ethereum (EIP-4361). Signature verification needs a backend. |
+| Coinbase | Two different things: OAuth for a coinbase.com account, or the Wallet SDK for self-custody. Pick one. |
+| Email | Supabase OTP, per the seed. The route the milestone actually specifies. |
+| Robinhood | No public third-party sign-in. Their API is key-based for your own account. |
+| Cash App | Cash App Pay is a payment method via Square, not an identity provider. |
+
+The marks in `connectors.ts` are **simplified placeholders drawn in-repo**, not
+official logos. Before any public launch, replace them with each company's
+official asset and follow their brand guidelines — several forbid redrawing the
+mark, and most dictate button wording and clear space.
 
 ## Runtime configuration (M3)
 

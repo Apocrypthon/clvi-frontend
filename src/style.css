@@ -338,3 +338,187 @@ body {
     transform: none !important;
   }
 }
+
+/* A dense screen cannot sit straight on the vista — the horizon glow eats
+   small text. This scrim keeps the sky readable behind the content. */
+.view--new {
+  gap: 12px;
+  /* Only as dark as the text needs. The buttons carry their own background,
+     so the middle band stays light enough to keep the skyline visible. */
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--dusk-4) 62%, transparent) 0%,
+    color-mix(in srgb, var(--dusk-4) 22%, transparent) 34%,
+    color-mix(in srgb, var(--dusk-4) 30%, transparent) 62%,
+    color-mix(in srgb, var(--dusk-4) 72%, transparent) 86%,
+    color-mix(in srgb, var(--dusk-4) 88%, transparent) 100%
+  );
+}
+
+.view--new .view-title {
+  margin-top: 1vh;
+}
+
+.view--new .tagline {
+  margin-bottom: 2px;
+  font-size: 0.9375rem;
+}
+
+/* ---- connector buttons (NEW screen) --------------------------------------
+   Five loud brands on one screen turn into a logo salad fast, so the pill
+   stays in the dusk palette and only the mark plate carries brand colour. */
+
+.connectors {
+  width: 100%;
+  max-width: 24rem;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.connector {
+  --brand: var(--neon);
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 56px;
+  padding: 9px 15px;
+  border: 1px solid color-mix(in srgb, var(--sand) 16%, transparent);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--dusk-4) 82%, transparent);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  color: var(--text);
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 120ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+/* The brand glow only appears on contact, so the resting state stays calm. */
+.connector:active {
+  transform: scale(0.985);
+  border-color: color-mix(in srgb, var(--brand) 55%, transparent);
+  box-shadow: 0 0 22px color-mix(in srgb, var(--brand) 22%, transparent);
+}
+
+.connector.is-picked {
+  border-color: color-mix(in srgb, var(--brand) 60%, transparent);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--brand) 18%, transparent);
+}
+
+.connector:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 3px;
+}
+
+.connector-mark {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  /* `currentColor` inside each mark resolves to the brand colour. */
+  color: var(--brand);
+  background: color-mix(in srgb, var(--brand) 14%, transparent);
+}
+
+.connector-mark svg {
+  width: 22px;
+  height: 22px;
+  display: block;
+}
+
+.connector-label {
+  flex: 1 1 auto;
+  letter-spacing: 0.01em;
+}
+
+/* Says plainly that this one has nothing to connect to, without dimming the
+   button into looking broken. */
+.connector-flag {
+  flex: 0 0 auto;
+  padding: 3px 8px;
+  border: 1px solid color-mix(in srgb, var(--sand) 22%, transparent);
+  border-radius: 999px;
+  color: color-mix(in srgb, var(--sand) 55%, transparent);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+.rule {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 2px 0;
+  color: color-mix(in srgb, var(--sand) 40%, transparent);
+  font-size: 0.8125rem;
+}
+
+.rule::before,
+.rule::after {
+  content: '';
+  flex: 1 1 auto;
+  height: 1px;
+  background: color-mix(in srgb, var(--sand) 16%, transparent);
+}
+
+.connector-status {
+  max-width: 26rem;
+  min-height: 3.2em;
+  margin: 2px 0 0;
+  color: color-mix(in srgb, var(--sand) 66%, transparent);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  /* Sits low on the screen, where the horizon glow is brightest. */
+  text-shadow: 0 1px 10px rgba(6, 5, 14, 0.95), 0 0 24px rgba(6, 5, 14, 0.8);
+  text-wrap: pretty;
+}
+
+/* A provider with no integration to build against reads amber, not neutral. */
+.connector-status[data-status='unavailable'] {
+  color: color-mix(in srgb, var(--dusk-0) 88%, var(--sand));
+}
+
+/* A 568px-tall phone cannot hold five 56px buttons plus a heading, a tagline
+   and a status line. Tighten rather than let the status line fall off. */
+@media (max-height: 700px) {
+  .view--new {
+    gap: 8px;
+  }
+
+  .view--new .view-title {
+    margin-top: 0;
+    font-size: 1.375rem;
+  }
+
+  .view--new .tagline {
+    font-size: 0.8125rem;
+  }
+
+  .connectors {
+    gap: 7px;
+  }
+
+  .connector {
+    min-height: 48px;
+    border-radius: 13px;
+  }
+
+  .connector-mark {
+    width: 30px;
+    height: 30px;
+  }
+
+  .rule {
+    margin: 0;
+  }
+}

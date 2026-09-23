@@ -170,3 +170,59 @@ flags any removal without a matching addition). Each new assertion confirmed
 non-vacuous by breaking it first — dropping the guard, emptying before
 appending, and remounting the scene each failed as expected, then reverted.
 Screens reviewed at 390 × 844.
+
+## 2026-09-23 — M3a sign-in provider chooser
+
+**What.** The NEW screen becomes "Connect a wallet": five buttons — Coinbase,
+MetaMask, Robinhood, Cash App, and continue-with-email — each with a brand-tinted
+mark plate on a dusk-palette pill. Tapping one dispatches `strata:connect` with
+the provider id and shows that provider's real status.
+
+**Why.** Asked for directly. It is the front half of M3; LOOP § A2 says split a
+milestone in STATE.md before doing half of it, so M3 is now M3a (this) and M3b
+(wire one provider).
+
+**Files.** `src/connectors.ts` (new), `src/screens.ts`, `src/style.css`,
+`src/scene.ts`, `scripts/smoke.mjs`, `docs/ARCHITECTURE.md`, `docs/STATE.md`.
+
+**Nothing is wired, and the UI says so.** Each button carries a `status`:
+`planned` where a documented integration exists, `unavailable` where none does.
+Two are `unavailable` and say so on the button itself:
+
+- **Robinhood** publishes no third-party sign-in; their API is key-based for
+  your own account, not an identity provider.
+- **Cash App** offers Cash App Pay through Square — a payment method, not a way
+  to sign in.
+
+Coinbase, MetaMask and email are all buildable; ARCHITECTURE § Sign-in providers
+records what each needs. Worth re-checking before anyone spends engineering time
+on it — third-party auth offerings move.
+
+**Two rules written down so they survive.** This app must never collect a
+provider's password or seed phrase — real sign-in redirects (OAuth) or asks the
+extension to sign a challenge (EIP-1193), and a password field here would be a
+phishing page whatever the intent. And every `status` must stay true. `npm run
+smoke` now asserts both.
+
+**Brand assets are placeholders.** The marks are simplified shapes drawn in
+`connectors.ts`, not official logos, and are flagged as such at the top of the
+file. They must be replaced with each company's official asset, under their
+guidelines, before anything ships publicly.
+
+**Open question recorded, not decided.** The seed defines "wallet" as a
+*custodial Guardian account*; four of these five buttons imply self-custody or
+third-party identity, and `Account` in Contracts v1 has no field for an external
+identity. Flagged at the top of STATE.md for `clvi-architecture`.
+
+**Bug found while checking the layout.** A tower could be generated at exactly
+the layer's full height, so the tile edge cut it flat and left a hard horizontal
+line across the skyline — 6 of 1280 columns in the towers layer's top row were
+painted. Capped the height range; the top row is now empty.
+
+**Verify.** `npm run build` — PASS. `npm run smoke` — PASS: 4/4 viewport
+configurations plus `motion`, `routing`, and a new `connectors` pass. Each new
+assertion confirmed non-vacuous by breaking it first — duplicating a provider's
+note, mislabelling Robinhood's status, and adding a password input each failed
+as expected, then reverted. Reviewed at 390 × 844 and 320 × 568 (the compact
+layout keeps the status line above the fold on a 568 px screen), plus the picked
+state.

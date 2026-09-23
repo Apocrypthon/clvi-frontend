@@ -1,5 +1,6 @@
 import type { Router, Screen } from './router.ts';
 import type { Save } from './store.ts';
+import { CONNECTORS, type Connector } from './connectors.ts';
 
 /**
  * One render function per screen. Each returns a detached `.view` element that
@@ -105,16 +106,81 @@ function renderTitle(ctx: ScreenContext): HTMLElement {
   return el;
 }
 
+/**
+ * One provider button. The mark sits on a plate tinted with the brand colour;
+ * the pill itself stays in the dusk palette so five very loud brands do not
+ * turn the screen into a logo salad.
+ */
+function connectorButton(c: Connector, onPick: (c: Connector) => void): HTMLElement {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'connector';
+  btn.dataset.connector = c.id;
+  btn.style.setProperty('--brand', c.brand);
+
+  const plate = document.createElement('span');
+  plate.className = 'connector-mark';
+  // Static markup from src/connectors.ts — no user input reaches this.
+  plate.innerHTML = c.mark;
+
+  const label = document.createElement('span');
+  label.className = 'connector-label';
+  label.textContent = c.label;
+
+  btn.append(plate, label);
+
+  if (c.status === 'unavailable') {
+    const flag = document.createElement('span');
+    flag.className = 'connector-flag';
+    flag.textContent = 'no API';
+    // Decorative shorthand; the button's own label already names the provider.
+    flag.setAttribute('aria-hidden', 'true');
+    btn.append(flag);
+  }
+
+  btn.addEventListener('click', () => onPick(c));
+  return btn;
+}
+
 function renderNew(ctx: ScreenContext): HTMLElement {
   const el = view('new');
-  el.append(
-    topbar(ctx),
-    heading('New Guardian'),
-    placeholder([
-      'M3 puts wallet login here: email OTP, or a clearly labelled guest wallet.',
-      'M4 pans the camera down to street level for name, palette and silhouette.',
-    ]),
-  );
+  el.append(topbar(ctx), heading('Connect a wallet'));
+
+  const sub = document.createElement('p');
+  sub.className = 'tagline';
+  sub.textContent = 'Your Guardian account holds what you recover.';
+  el.append(sub);
+
+  const status = document.createElement('p');
+  status.className = 'connector-status';
+  // Reserve the line so picking a provider does not shove the buttons upward.
+  status.textContent = 'Nothing is wired yet — tap one to see what it needs.';
+
+  const list = document.createElement('div');
+  list.className = 'connectors';
+
+  const pick = (c: Connector): void => {
+    status.textContent = c.note;
+    status.dataset.status = c.status;
+    for (const b of list.querySelectorAll('.connector')) {
+      b.classList.toggle('is-picked', b instanceof HTMLElement && b.dataset.connector === c.id);
+    }
+    // The seam M3b binds to, mirroring `strata:begin`. Nothing listens yet.
+    document.dispatchEvent(new CustomEvent('strata:connect', { detail: { id: c.id } }));
+  };
+
+  const wallets = CONNECTORS.filter((c) => c.id !== 'email');
+  const email = CONNECTORS.find((c) => c.id === 'email');
+  for (const c of wallets) list.append(connectorButton(c, pick));
+
+  if (email) {
+    const rule = document.createElement('div');
+    rule.className = 'rule';
+    rule.innerHTML = '<span>or</span>';
+    list.append(rule, connectorButton(email, pick));
+  }
+
+  el.append(list, status);
   return el;
 }
 

@@ -70,7 +70,9 @@ const paintTowers: Paint = (ctx, w, h, rand) => {
   let x = 0;
   while (x < w) {
     const bw = 16 + rand() * 30;
-    const bh = h * (0.3 + rand() * 0.7);
+    // Capped below 1.0: a building that reaches the canvas top is cut flat by
+    // the tile edge, which reads as a hard horizontal line across the skyline.
+    const bh = h * (0.3 + rand() * 0.64);
     const top = h - bh;
 
     wrapped(x, bw, w, (px) => {

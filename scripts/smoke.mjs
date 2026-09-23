@@ -415,6 +415,94 @@ for (const size of SIZES) {
   await ctx.close();
 }
 
+// The connector chooser on NEW. Every button must be real, reachable, and
+// honest about what is behind it.
+{
+  const ctx = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    deviceScaleFactor: 2,
+    isMobile: true,
+    hasTouch: true,
+    userAgent: IPHONE_UA,
+  });
+  const page = await ctx.newPage();
+  const problems = [];
+  const check = (cond, msg) => { if (!cond) problems.push(msg); };
+
+  await page.goto(`${origin}#/new`, { waitUntil: 'networkidle' });
+
+  const EXPECTED = ['coinbase', 'metamask', 'robinhood', 'cashapp', 'email'];
+  const UNAVAILABLE = ['robinhood', 'cashapp'];
+
+  const found = await page.evaluate(() =>
+    [...document.querySelectorAll('.connector')].map((b) => {
+      const r = b.getBoundingClientRect();
+      return {
+        id: b.dataset.connector,
+        label: b.querySelector('.connector-label')?.textContent?.trim() ?? '',
+        hasMark: !!b.querySelector('.connector-mark svg'),
+        flagged: !!b.querySelector('.connector-flag'),
+        w: Math.round(r.width),
+        h: Math.round(r.height),
+      };
+    }));
+
+  check(
+    found.map((f) => f.id).join() === EXPECTED.join(),
+    `connector ids/order: expected ${EXPECTED.join()}, got ${found.map((f) => f.id).join()}`,
+  );
+  for (const f of found) {
+    check(f.hasMark, `connector "${f.id}" has no mark rendered`);
+    check(f.label.length > 0, `connector "${f.id}" has no label`);
+    check(f.h >= 44, `connector "${f.id}" is ${f.h}px tall, under the 44px minimum`);
+    const shouldFlag = UNAVAILABLE.includes(f.id);
+    check(
+      f.flagged === shouldFlag,
+      `connector "${f.id}" flag mismatch: flagged=${f.flagged}, expected ${shouldFlag}`,
+    );
+  }
+
+  // Tapping must surface that provider's own note and fire the M3 seam.
+  const seen = new Set();
+  await page.evaluate(() => {
+    window.__connectEvents = [];
+    document.addEventListener('strata:connect', (e) => window.__connectEvents.push(e.detail?.id));
+  });
+  for (const id of EXPECTED) {
+    await page.click(`[data-connector="${id}"]`);
+    const note = await page.evaluate(() =>
+      document.querySelector('.connector-status')?.textContent?.trim() ?? '');
+    check(note.length > 20, `connector "${id}" produced no status note`);
+    check(!seen.has(note), `connector "${id}" reuses another provider's note — notes must be specific`);
+    seen.add(note);
+    if (UNAVAILABLE.includes(id)) {
+      const flagged = await page.evaluate(() =>
+        document.querySelector('.connector-status')?.dataset.status);
+      check(flagged === 'unavailable', `connector "${id}" should mark its status unavailable`);
+    }
+  }
+  const events = await page.evaluate(() => window.__connectEvents);
+  check(
+    events.join() === EXPECTED.join(),
+    `strata:connect should fire once per tap with the id: got ${events.join()}`,
+  );
+
+  // No provider button may ask for a password or seed phrase in this app.
+  const inputs = await page.evaluate(() =>
+    [...document.querySelectorAll('input')].map((i) => i.type));
+  check(
+    !inputs.includes('password'),
+    'the connector screen must never collect a provider password in-app',
+  );
+
+  console.log(problems.length ? 'FAIL connectors' : 'ok   connectors');
+  for (const p of problems) {
+    console.log(`       ${p}`);
+    failures.push(`connectors: ${p}`);
+  }
+  await ctx.close();
+}
+
 await browser.close();
 server.close();
 

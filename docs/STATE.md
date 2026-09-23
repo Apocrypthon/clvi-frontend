@@ -1,7 +1,15 @@
 # STATE — clvi-frontend
 
-**Milestone reached: M2 (state machine).** The repo is green and deployable.
-Next increment: **M3 — Wallet login.**
+**Milestone reached: M2, plus M3a (the sign-in provider chooser).** The repo is
+green and deployable. Next increment: **M3b — wire one provider.**
+
+> **Open question for a human, not code.** `SEED.md` defines "wallet" as a
+> **custodial Guardian account** reached by email OTP. The chooser now also
+> offers Coinbase, MetaMask, Robinhood and Cash App, which point at
+> self-custody or third-party identity instead. That is a product direction
+> change and it belongs in `clvi-architecture`, since `Account` in Contracts v1
+> has no field for an external identity. Nothing is wired, so nothing is
+> committed yet.
 
 > **Branch note.** The protocol in `SEED.md` assumes a `loop` branch that Netlify
 > branch-deploys and a human promotes to `main`. **That branch does not exist on
@@ -25,6 +33,7 @@ None.
     src/router.ts       state machine + hash routing; createRouter({ resolve })
     src/store.ts        validated localStorage under `strata.*`; readSave()
     src/screens.ts      renderScreen(name, ctx) — one function per screen
+    src/connectors.ts   sign-in providers: marks, brand colours, real status
     src/scene.ts        the parallax vista — mountScene(stage), no rAF loop
     src/env.d.ts        declares __BUILD_TIME__
     src/style.css       dusk tokens (--dusk-0..4, --neon, --sand, --tap) + base
@@ -95,7 +104,11 @@ Smoke checks for **every** increment. All must pass before you ship.
    CTA reaches NEW, Back returns to TITLE, a reload restores the screen from the
    hash, an unknown hash and a guarded `#/returning` are both rewritten in place,
    in-app Back from a deep link lands on TITLE, a save flips the CTA to
-   *Continue*, and six malformed saves each read as "no save". It also asserts
+   *Continue*, and six malformed saves each read as "no save". A `connectors`
+   pass then checks all five provider buttons render with a mark and a label,
+   clear 44 px, carry the "no API" flag exactly when their status says so, each
+   produce their own distinct status note, fire `strata:connect` once per tap —
+   and that the screen contains no password input, ever. It also asserts
    the vista is never remounted and that the screen host never goes empty mid-swap
    (a blank frame). `SMOKE_SHOTS=/some/dir npm run smoke` also writes screenshots.
    It **skips** (exit 0) if Playwright is not on the machine — then do 3–6 by
@@ -131,14 +144,22 @@ Ordered. Take the first unfinished item, whole (`docs/LOOP.md` § A2).
 - [x] **M2 — State machine.** Done. Hash routing, guarded transitions, back
       gesture safe, `strata.*` storage validated on read. NEW / RETURNING /
       SETTINGS are honest scaffolds that name the milestone filling them in.
-- [ ] **M3 — Wallet login.** "Wallet" = custodial Guardian account. Email OTP via
-      Supabase JS; public anon key read at runtime from `/config.json` (never
-      committed). On success derive `displayId` = `GRD-` + first 6 of
+- [x] **M3a — Sign-in provider chooser.** Done. Five buttons on the NEW screen
+      (Coinbase, MetaMask, Robinhood, Cash App, email). **None are wired.**
+      Tapping one dispatches `strata:connect` with the provider id and shows
+      that provider's real status. See ARCHITECTURE § Sign-in providers for
+      what each one can actually be built against — two of them, nothing.
+- [ ] **M3b — Wire one provider.** Email OTP via Supabase JS is the route the
+      seed specifies: public anon key read at runtime from `/config.json` (never
+      committed), then derive `displayId` = `GRD-` + first 6 of
       `sha256(userId)` via `crypto.subtle.digest`. Offline/dev fallback: local
-      guest wallet, clearly labelled as such in the UI. It lands in the NEW
-      screen (`renderNew` in `src/screens.ts`), and the Supabase client is the
-      first runtime dependency this repo has taken — ARCHITECTURE says argue for
-      it here before adding it.
+      guest wallet, clearly labelled in the UI. Bind to `strata:connect` rather
+      than rewiring the buttons. The Supabase client would be this repo's first
+      runtime dependency — ARCHITECTURE says argue for it here before adding it.
+      **Resolve the direction question at the top of this file first**: if the
+      answer is self-custody, MetaMask (EIP-1193 + EIP-4361) is the cheaper
+      first wire and needs no anon key, but it does need a backend to verify
+      the signature, which this repo does not have.
 - [ ] **M4 — Character creation, pan-down.** Camera pans DOWN from the title
       vista to street level where the silhouette stands. Name field + Holi
       palette pick (8 pigment swatches) + 3 silhouettes. Save to `localStorage`
