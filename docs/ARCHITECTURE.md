@@ -115,13 +115,23 @@ negotiable:
 
 Provider reality as of M3 — **verify before committing engineering time**:
 
-| Provider | What exists |
-| --- | --- |
-| MetaMask | EIP-1193 in-page, then Sign-In With Ethereum (EIP-4361). Signature verification needs a backend. |
-| Coinbase | Two different things: OAuth for a coinbase.com account, or the Wallet SDK for self-custody. Pick one. |
-| Email | Supabase OTP, per the seed. The route the milestone actually specifies. |
-| Robinhood | No public third-party sign-in. Their API is key-based for your own account. |
-| Cash App | Cash App Pay is a payment method via Square, not an identity provider. |
+| Provider | Group | What exists |
+| --- | --- | --- |
+| Coinbase | wallet | Two different things: OAuth for a coinbase.com account, or the Wallet SDK for self-custody. Pick one. |
+| MetaMask | wallet | EIP-1193 in-page, then Sign-In With Ethereum (EIP-4361). Signature verification needs a backend. |
+| Apple | account | Supabase OAuth provider. Apple ships exact button artwork and forbids altering it. |
+| SMS | account | Supabase phone OTP, but needs a paid SMS provider and a rate limit or SMS-pumping fraud will bill you. |
+| Email | account | Supabase OTP, per the seed. The route the milestone actually specifies. |
+
+Two providers were offered and then removed once checked: **Robinhood**
+publishes no third-party sign-in (their API is key-based for your own account),
+and **Cash App Pay** is a payment method via Square, not an identity provider.
+Recorded so nobody re-adds them on the assumption they were simply missed.
+
+If this shell is ever wrapped for the App Store, Apple's review guidelines
+require an equivalent privacy-preserving login wherever third-party logins are
+offered — Sign in with Apple satisfies that. It does not apply to a plain web
+build, and the rule should be re-read before anyone relies on it.
 
 The marks in `connectors.ts` are **simplified placeholders drawn in-repo**, not
 official logos. Before any public launch, replace them with each company's

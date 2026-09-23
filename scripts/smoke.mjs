@@ -431,8 +431,10 @@ for (const size of SIZES) {
 
   await page.goto(`${origin}#/new`, { waitUntil: 'networkidle' });
 
-  const EXPECTED = ['coinbase', 'metamask', 'robinhood', 'cashapp', 'email'];
-  const UNAVAILABLE = ['robinhood', 'cashapp'];
+  const EXPECTED = ['coinbase', 'metamask', 'apple', 'sms', 'email'];
+  // Nothing currently ships as 'unavailable'. The flag machinery stays so a
+  // future provider with no public sign-in cannot quietly look connectable.
+  const UNAVAILABLE = [];
 
   const found = await page.evaluate(() =>
     [...document.querySelectorAll('.connector')].map((b) => {

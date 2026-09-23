@@ -226,3 +226,42 @@ note, mislabelling Robinhood's status, and adding a password input each failed
 as expected, then reverted. Reviewed at 390 × 844 and 320 × 568 (the compact
 layout keeps the status line above the fold on a 568 px screen), plus the picked
 state.
+
+## 2026-09-23 — M3a revised: Apple and SMS in, Robinhood and Cash App out
+
+**What.** Dropped the two providers that had nothing to connect to and added
+Sign in with Apple and SMS (phone OTP). The five buttons are now ruled into two
+groups — **wallet** (Coinbase, MetaMask) above the line, **account** (Apple,
+SMS, email) below it — because the split is who ends up holding the keys.
+
+**Why.** Asked for directly. Robinhood and Cash App were only ever rendered to
+show what the choice looked like; once confirmed unbuildable they were dead
+weight on the screen.
+
+**Both, not one.** The ask was "Apple ID login or sms sso". They are different
+affordances — Apple is one tap on the target device, SMS needs no existing
+account and covers non-Apple users — so both are in. Dropping either is one
+entry removed from `CONNECTORS`; the grouping and the smoke expectations follow
+from the registry.
+
+**Files.** `src/connectors.ts`, `src/screens.ts`, `scripts/smoke.mjs`,
+`docs/ARCHITECTURE.md`, `docs/STATE.md`.
+
+**Notes carried on the new entries.** Apple is a Supabase OAuth provider, so it
+is close to the email path already specced — but Apple ships exact button
+artwork and forbids altering it, so the placeholder mark here is more of a
+problem than most. SMS is Supabase phone OTP, which needs a paid provider
+(Twilio and friends) *and* a rate limit, or SMS-pumping fraud will run up the
+bill. Both recorded in ARCHITECTURE § Sign-in providers.
+
+**Removals recorded, not just deleted.** ARCHITECTURE now says why Robinhood and
+Cash App are absent, so a later session does not re-add them assuming they were
+an oversight.
+
+**Also.** The heading was "Connect a wallet", which stopped being true once
+three of five options became ordinary sign-ins — now "Create your Guardian".
+`Connector` gained a `group` field, so `renderNew` no longer special-cases email
+by id to decide where the rule goes.
+
+**Verify.** `npm run build` — PASS. `npm run smoke` — PASS, all seven passes
+including `connectors` against the new id list. Reviewed at 390 × 844.

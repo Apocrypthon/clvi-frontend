@@ -144,7 +144,7 @@ function connectorButton(c: Connector, onPick: (c: Connector) => void): HTMLElem
 
 function renderNew(ctx: ScreenContext): HTMLElement {
   const el = view('new');
-  el.append(topbar(ctx), heading('Connect a wallet'));
+  el.append(topbar(ctx), heading('Create your Guardian'));
 
   const sub = document.createElement('p');
   sub.className = 'tagline';
@@ -169,16 +169,21 @@ function renderNew(ctx: ScreenContext): HTMLElement {
     document.dispatchEvent(new CustomEvent('strata:connect', { detail: { id: c.id } }));
   };
 
-  const wallets = CONNECTORS.filter((c) => c.id !== 'email');
-  const email = CONNECTORS.find((c) => c.id === 'email');
+  // Bring-your-own-wallet above the rule, ordinary sign-in below it: the split
+  // is who ends up holding the keys, which is worth a visible line.
+  const wallets = CONNECTORS.filter((c) => c.group === 'wallet');
+  const accounts = CONNECTORS.filter((c) => c.group === 'account');
+
   for (const c of wallets) list.append(connectorButton(c, pick));
 
-  if (email) {
+  if (wallets.length > 0 && accounts.length > 0) {
     const rule = document.createElement('div');
     rule.className = 'rule';
     rule.innerHTML = '<span>or</span>';
-    list.append(rule, connectorButton(email, pick));
+    list.append(rule);
   }
+
+  for (const c of accounts) list.append(connectorButton(c, pick));
 
   el.append(list, status);
   return el;

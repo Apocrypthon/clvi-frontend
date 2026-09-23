@@ -144,11 +144,13 @@ Ordered. Take the first unfinished item, whole (`docs/LOOP.md` § A2).
 - [x] **M2 — State machine.** Done. Hash routing, guarded transitions, back
       gesture safe, `strata.*` storage validated on read. NEW / RETURNING /
       SETTINGS are honest scaffolds that name the milestone filling them in.
-- [x] **M3a — Sign-in provider chooser.** Done. Five buttons on the NEW screen
-      (Coinbase, MetaMask, Robinhood, Cash App, email). **None are wired.**
-      Tapping one dispatches `strata:connect` with the provider id and shows
-      that provider's real status. See ARCHITECTURE § Sign-in providers for
-      what each one can actually be built against — two of them, nothing.
+- [x] **M3a — Sign-in provider chooser.** Done. Five buttons on the NEW screen,
+      ruled into two groups: **wallet** (Coinbase, MetaMask) and **account**
+      (Apple, SMS, email). **None are wired.** Tapping one dispatches
+      `strata:connect` with the provider id and shows that provider's real
+      status. All five are buildable — see ARCHITECTURE § Sign-in providers,
+      which also records why Robinhood and Cash App were removed, so nobody
+      re-adds them thinking they were merely forgotten.
 - [ ] **M3b — Wire one provider.** Email OTP via Supabase JS is the route the
       seed specifies: public anon key read at runtime from `/config.json` (never
       committed), then derive `displayId` = `GRD-` + first 6 of
@@ -156,9 +158,11 @@ Ordered. Take the first unfinished item, whole (`docs/LOOP.md` § A2).
       guest wallet, clearly labelled in the UI. Bind to `strata:connect` rather
       than rewiring the buttons. The Supabase client would be this repo's first
       runtime dependency — ARCHITECTURE says argue for it here before adding it.
-      **Resolve the direction question at the top of this file first**: if the
-      answer is self-custody, MetaMask (EIP-1193 + EIP-4361) is the cheaper
-      first wire and needs no anon key, but it does need a backend to verify
+      **Resolve the direction question at the top of this file first.** If the
+      answer is custodial, Apple / SMS / email are all the same Supabase path
+      and Apple is the best first wire on an iPhone-first game (one tap, no
+      inbox round-trip, no per-message cost). If it is self-custody, MetaMask
+      (EIP-1193 + EIP-4361) needs no anon key but does need a backend to verify
       the signature, which this repo does not have.
 - [ ] **M4 — Character creation, pan-down.** Camera pans DOWN from the title
       vista to street level where the silhouette stands. Name field + Holi
